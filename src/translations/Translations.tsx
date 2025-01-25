@@ -169,6 +169,8 @@ export const translations = {
       "loadingHistory": "Loading history...",
       "noHistory": "No history available.",
       showMoreButton: 'Show More',
+      documentation: 'Documentation',
+      documentationWillAppear: 'The documentation of the generated file will appear here...',
     },
     support: {
       title: 'Contact Support',
@@ -402,6 +404,8 @@ export const translations = {
       "loadingHistory": "Cargando historial...",
       "noHistory": "No hay historial disponible.",
       showMoreButton: 'Mostrar más',
+      documentation: 'Documentación',
+      documentationWillAppear: 'La documentación del archivo generado aparecerá aquí...',
     },
     support: {
       title: 'Contactar Soporte',

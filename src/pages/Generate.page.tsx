@@ -1,11 +1,12 @@
 // @ts-nocheck
 import React, { useEffect, useState } from 'react';
 import { IconCopy, IconDownload, IconFileText, IconRotate } from '@tabler/icons-react';
-import { Button, Container, Divider, Grid, Group, Select, Textarea, TextInput, Title, Tooltip, Accordion, Alert } from '@mantine/core';
+import { Button, Container, Divider, Grid, Group, Select, Textarea, TextInput, Title, Tooltip, Accordion, Alert, Paper, Loader, Center } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { MultiSelectCreatable } from '@/components/CreatableMultiSelect/CreatableMultiSelect';
 import { FileDetails } from '@/components/FileDetails/FileDetails';
 import { useLanguage } from '@/context/LanguageContext';
+import ReactMarkdown from 'react-markdown';
 
 
 export const Generate = () => {
@@ -24,11 +25,12 @@ export const Generate = () => {
   const [fileHistory, setFileHistory] = useState([]); // Store the user's file history
   const [visibleFiles, setVisibleFiles] = useState(5); // Number of files to display initially
   const [loadingHistory, setLoadingHistory] = useState(false); // Loading state for file history
+  const [generating, setGenerating] = useState(false);
   const [errorHistory, setErrorHistory] = useState(null); // Error state for fetching history
   const [isLoggedIn, setIsLoggedIn] = useState(false); // Track login status
+  const [documentation, setDocumentation] = useState(''); // State to store documentation
 
-
-  const { t } = useLanguage(); // Access the translation function
+  const { t, language } = useLanguage(); // Access the translation function
 
   const form = useForm({
     initialValues: {
@@ -60,6 +62,7 @@ export const Generate = () => {
   });
 
   const handleGenerate = async () => {
+    setGenerating(true);
     try {
       const authToken = localStorage.getItem('authToken');
       if (!authToken) {
@@ -71,23 +74,27 @@ export const Generate = () => {
         ...form.values,
         triggerEvents: triggerEventsData.map((item) => item.value),
         branches: branchesData.map((item) => item.value),
+        language
       };
 
       const response = await fetch('http://localhost:8080/api/yaml', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`, // Add Authorization header
+          Authorization: `Bearer ${authToken}`, // Add Authorization header
         },
         body: JSON.stringify(payload),
       });
 
       if (response.ok) {
-        const blob = await response.blob();
-        const yamlText = await blob.text();
+        const data = await response.json();
+        const yamlContent = atob(data.yamlFile); // Decode Base64 YAML file
+        const doc = data.documentation; // Extract documentation
 
-        form.setFieldValue('yamlPreview', yamlText);
-        const url = URL.createObjectURL(blob);
+        form.setFieldValue('yamlPreview', yamlContent);
+        setDocumentation(doc); // Set the documentation content
+
+        const url = URL.createObjectURL(new Blob([yamlContent], { type: 'text/yaml' }));
         setDownloadUrl(url);
 
         fetchFileHistory();
@@ -97,7 +104,9 @@ export const Generate = () => {
     } catch (error) {
       console.error('Error generating YAML file:', error);
     }
+    setGenerating(false);
   };
+
 
   const fetchFileHistory = async () => {
     try {
@@ -162,6 +171,24 @@ export const Generate = () => {
 
   return (
     <Container mt="lg">
+      {generating && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            backgroundColor: 'rgba(255, 255, 255, 0.8)',
+            zIndex: 1000,
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+        >
+          <Loader size="lg" variant="dots" color="blue" />
+        </div>
+      )}
       <Grid align="center" justify="center" mb="xl">
         <Grid.Col span={12} style={{ textAlign: 'center' }}>
           <Title order={2}>{t('generate.title')}</Title>
@@ -257,7 +284,7 @@ export const Generate = () => {
             />
 
             <Group mt="xl">
-              <Button type="submit" variant="filled" color="dark" leftIcon={<IconFileText size={16} />}>
+              <Button disabled={generating} type="submit" variant="filled" color="dark" leftIcon={<IconFileText size={16} />}>
                 {t('generate.generateButton')}
               </Button>
               <Button
@@ -312,6 +339,17 @@ export const Generate = () => {
                 </Tooltip>
               )}
             </Group>
+
+            <Divider my="lg" />
+
+            <Grid.Col md={6}>
+              <Title order={4} mb="sm">
+                {t('generate.documentation')}
+              </Title>
+              <Paper p="md" shadow="xs" style={{ minHeight: '20rem' }}>
+                <ReactMarkdown>{documentation}</ReactMarkdown>
+              </Paper>
+            </Grid.Col>
 
             <div>
               <Title order={3} mb="lg">
